@@ -283,7 +283,7 @@ validate(Rule = schema, Name, Value, ValidatorState) ->
     end;
 
 validate(Rule, Name, _Value, _ValidatorState) ->
-    error_logger:info_msg("Can't validate ~p with ~p", [Name, Rule]),
+    logger:info("Can't validate ~p with ~p", [Name, Rule]),
     error({unknown_validation_rule, Rule}).
 
 -spec validation_error(Rule :: any(), Name :: any()) -> no_return().

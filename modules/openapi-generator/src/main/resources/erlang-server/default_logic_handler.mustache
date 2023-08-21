@@ -2,19 +2,29 @@
 
 -behaviour({{packageName}}_logic_handler).
 
--export([handle_request/3]).
+-export([handle_request/3
+        ,resource_exists/3
+        ]).
 {{#authMethods}}
     {{#isApiKey}}
--export([authorize_api_key/2]).
+-export([authorize_api_key/3]).
     {{/isApiKey}}
+    {{#isBasicBearer}}
+-export([authorize_api_key/3]).
+    {{/isBasicBearer}}
 {{/authMethods}}
 
 {{#authMethods}}
     {{#isApiKey}}
--spec authorize_api_key(OperationID :: {{packageName}}_api:operation_id(), ApiKey :: binary()) -> {true, #{}}.
+-spec authorize_api_key(OperationID :: {{packageName}}_api:operation_id(), ApiKey :: binary(), Context :: #{}) -> {true, #{}}.
 
-authorize_api_key(_, _) -> {true, #{}}.
+authorize_api_key(_, _, Contex) -> {true, Contex}.
     {{/isApiKey}}
+    {{#isBasicBearer}}
+-spec authorize_api_key(OperationID :: {{packageName}}_api:operation_id(), ApiKey :: {bearer, binary()}, Context :: #{}) -> {true, #{}}.
+
+authorize_api_key(_, _, Contex) -> {true, Contex}.
+    {{/isBasicBearer}}
 {{/authMethods}}
 
 -spec handle_request(
@@ -25,8 +35,17 @@ authorize_api_key(_, _) -> {true, #{}}.
     {Status :: cowboy:http_status(), Headers :: cowboy:http_headers(), Body :: jsx:json_term()}.
 
 handle_request(OperationID, Req, Context) ->
-    error_logger:error_msg(
+    logger:error(
         "Got not implemented request to process: ~p~n",
         [{OperationID, Req, Context}]
     ),
     {501, #{}, #{}}.
+
+-spec resource_exists(
+    OperationID :: {{packageName}}_api:operation_id(),
+    Req :: cowboy_req:req(),
+    Context :: #{}
+) -> {boolean(), #{}}.
+
+resource_exists(_OperationID, _Req, Context) ->
+    {true, Context}.

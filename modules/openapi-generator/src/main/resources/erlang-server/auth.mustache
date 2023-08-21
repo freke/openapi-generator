@@ -1,17 +1,18 @@
 -module({{packageName}}_auth).
 
--export([authorize_api_key/5]).
+-export([authorize_api_key/6]).
 
 -spec authorize_api_key(
     LogicHandler :: atom(),
     OperationID :: {{packageName}}_api:operation_id(),
     From :: header | qs_val,
     KeyParam :: iodata() | atom(),
-    Req ::cowboy_req:req()
+    Req ::cowboy_req:req(),
+    Context :: #{binary() => any()}
 )-> {true, Context :: #{binary() => any()}, Req ::cowboy_req:req()} |
     {false, AuthHeader :: binary(), Req ::cowboy_req:req()}.
 
-authorize_api_key(LogicHandler, OperationID, From, KeyParam, Req0) ->
+authorize_api_key(LogicHandler, OperationID, From, KeyParam, Req0, Context0) ->
     {ApiKey, Req} = get_api_key(From, KeyParam, Req0),
     case ApiKey of
         undefined ->
@@ -21,14 +22,19 @@ authorize_api_key(LogicHandler, OperationID, From, KeyParam, Req0) ->
             Result = {{packageName}}_logic_handler:authorize_api_key(
                 LogicHandler,
                 OperationID,
-                ApiKey
+                ApiKey,
+                Context0
             ),
             case Result of
               {{#authMethods}}
                 {{#isApiKey}}
-                {true, Context}  ->
-                    {true, Context, Req};
+                {true, Context1}  ->
+                    {true, Context1, Req};
                 {{/isApiKey}}
+                {{#isBasicBearer}}
+                {true, Context1}  ->
+                    {true, Context1, Req};
+                {{/isBasicBearer}}
               {{/authMethods}}
                 false ->
                     AuthHeader = <<"">>,
@@ -37,15 +43,8 @@ authorize_api_key(LogicHandler, OperationID, From, KeyParam, Req0) ->
     end.
 
 get_api_key(header, KeyParam, Req) ->
-    Headers = cowboy_req:headers(Req),
-    {
-        maps:get(
-            {{packageName}}_utils:to_header(KeyParam),
-            Headers,
-            undefined
-        ),
-        Req
-    };
+    Header = cowboy_req:parse_header(openapi_utils:to_lower(list_to_binary(KeyParam)), Req),
+    {Header, Req};
 
 get_api_key(qs_val, KeyParam, Req) ->
     QS = cowboy_req:parse_qs(Req),

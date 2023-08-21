@@ -1,15 +1,22 @@
 -module({{packageName}}_logic_handler).
 
--export([handle_request/4]).
+-export([handle_request/4
+        ,resource_exists/4
+        ]).
 {{#authMethods}}
 {{#isApiKey}}
 {{#-first}}
--export([authorize_api_key/3]).
+-export([authorize_api_key/4]).
 {{/-first}}
 {{/isApiKey}}
+{{#isBasicBearer}}
+{{#-first}}
+-export([authorize_api_key/4]).
+{{/-first}}
+{{/isBasicBearer}}
 {{/authMethods}}
 {{^authMethods}}
--export([authorize_api_key/3]).
+-export([authorize_api_key/4]).
 {{/authMethods}}
 -type context() :: #{binary() => any()}.
 -type handler_response() ::{
@@ -23,15 +30,27 @@
     {{#isApiKey}}
 -callback authorize_api_key(
     OperationID :: {{packageName}}_api:operation_id(),
-    ApiKey :: binary()
+    ApiKey :: binary(),
+    Context :: context()
 ) ->
     Result :: boolean() | {boolean(), context()}.
     {{/isApiKey}}
+    {{#isBasicBearer}}
+-callback authorize_api_key(
+    OperationID :: {{packageName}}_api:operation_id(),
+    ApiKey :: {bearer, binary()},
+    Context :: context()
+) ->
+    Result :: boolean() | {boolean(), context()}.
+    {{/isBasicBearer}}
 {{/authMethods}}
 
 
 -callback handle_request(OperationID :: {{packageName}}_api:operation_id(), cowboy_req:req(), Context :: context()) ->
     handler_response().
+
+-callback resource_exists(OperationID :: {{packageName}}_api:operation_id(), cowboy_req:req(), Context :: context()) ->
+    {boolean(), Context :: context()}.
 
 -spec handle_request(
     Handler :: atom(),
@@ -44,17 +63,34 @@
 handle_request(Handler, OperationID, Req, Context) ->
     Handler:handle_request(OperationID, Req, Context).
 
+-spec resource_exists(
+    Handler :: atom(),
+    OperationID :: {{packageName}}_api:operation_id(),
+    Request :: cowboy_req:req(),
+    Context :: context()
+) ->
+    {boolean(), Context :: context()}.
+
+resource_exists(Handler, OperationID, Req, Context) ->
+    Handler:resource_exists(OperationID, Req, Context).
+
 {{#authMethods}}
     {{#isApiKey}}
--spec authorize_api_key(Handler :: atom(), OperationID :: {{packageName}}_api:operation_id(), ApiKey :: binary()) ->
+-spec authorize_api_key(Handler :: atom(), OperationID :: {{packageName}}_api:operation_id(), ApiKey :: binary(), Context :: context()) ->
     Result :: false | {true, context()}.
-authorize_api_key(Handler, OperationID, ApiKey) ->
-    Handler:authorize_api_key(OperationID, ApiKey).
+authorize_api_key(Handler, OperationID, ApiKey, Context) ->
+    Handler:authorize_api_key(OperationID, ApiKey, Context).
     {{/isApiKey}}
+    {{#isBasicBearer}}
+-spec authorize_api_key(Handler :: atom(), OperationID :: {{packageName}}_api:operation_id(), ApiKey :: {bearer, binary()}, Context :: context()) ->
+    Result :: false | {true, context()}.
+authorize_api_key(Handler, OperationID, ApiKey, Context) ->
+    Handler:authorize_api_key(OperationID, ApiKey, Context).
+    {{/isBasicBearer}}
 {{/authMethods}}
 {{^authMethods}}
--spec authorize_api_key(Handler :: atom(), OperationID :: {{packageName}}_api:operation_id(), ApiKey :: binary()) ->
+-spec authorize_api_key(Handler :: atom(), OperationID :: {{packageName}}_api:operation_id(), ApiKey :: binary(), Context :: context()) ->
     Result :: false.
-authorize_api_key(_Handler, _OperationID, _ApiKey) ->
+authorize_api_key(_Handler, _OperationID, _ApiKey, _Context) ->
     false.
 {{/authMethods}}
