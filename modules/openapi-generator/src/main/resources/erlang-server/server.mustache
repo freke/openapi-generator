@@ -6,10 +6,11 @@
 -export([start/2]).
 
 -spec start( ID :: any(), #{
-    ip            => inet:ip_address(),
-    port          => inet:port_number(),
-    logic_handler => module(),
-    net_opts      => []
+    ip                  => inet:ip_address(),
+    port                => inet:port_number(),
+    logic_handler       => module(),
+    net_opts            => list(),
+    cowboy_extra_opts   => list()
 }) -> {ok, pid()} | {error, any()}.
 
 start(ID, #{
